@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>🎓 College AI Assistant</h1>
+            <p>Your smart college companion</p>
+        </header>
+
+        <main>
+            <h2>Hello, Student! 👋</h2>
+            <p>Ask questions, calculate attendance, or upload college documents.</p>
+
+            <div id="chat-box" class="chat-box">
+                <p><strong>AI Assistant:</strong> Welcome! How can I help you?</p>
+            </div>
+
+            <form id="chat-form">
+                <label for="question">Your question</label>
+                <textarea id="question" name="question" rows="3"
+                    placeholder="Calculate attendance or ask about your timetable..."></textarea>
+
+                <label for="student">Student name</label>
+                <input id="student" name="student" placeholder="Your name">
+
+                <label for="subject">Subject</label>
+                <input id="subject" name="subject" placeholder="e.g. Mathematics">
+
+                <label for="day">Attendance date</label>
+                <input id="day" name="day" type="date">
+
+                <label for="status">Attendance status</label>
+                <select id="status" name="status">
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                </select>
+
+                <label for="file">Upload PDF, DOCX, or TXT</label>
+                <input id="file" name="file" type="file" accept=".pdf,.docx,.txt">
+
+                <button type="submit" id="send-btn">Send Message ➤</button>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const chatBox = document.getElementById("chat-box");
+        const sendBtn = document.getElementById("send-btn");
+
+        form.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const question = document.getElementById("question").value.trim();
+            const file = document.getElementById("file").files[0];
+
+            if (!question && !file) {
+                alert("Please enter a question or upload a document.");
+                return;
+            }
+
+            const userMessage = document.createElement("p");
+            userMessage.textContent = "You: " + (question || "Please process my document.");
+            chatBox.appendChild(userMessage);
+
+            const reply = document.createElement("p");
+            reply.textContent = "AI Assistant: Thinking...";
+            chatBox.appendChild(reply);
+
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    body: new FormData(form)
+                });
+
+                const data = await response.json();
+                reply.textContent = "AI Assistant: " + data.answer;
+
+                const tool = document.createElement("p");
+                tool.textContent = "Tool used: " + (data.tool || "Unknown");
+                chatBox.appendChild(tool);
+
+            } catch (error) {
+                reply.textContent = "Could not connect. Check whether Flask is running.";
+            } finally {
+                sendBtn.disabled = false;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

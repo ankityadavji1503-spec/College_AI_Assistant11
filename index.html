@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">🎓</div>
+            <div>
+                <h1>College AI Assistant</h1>
+                <p>Your smart college companion</p>
+            </div>
+        </header>
+
+        <main>
+            <section class="welcome">
+                <h2>Hello, Student! 👋</h2>
+                <p>Ask questions, calculate attendance, analyze timetables, or upload documents.</p>
+            </section>
+
+            <div class="features">
+                <button type="button" class="suggestion"
+                    data-question="I attended 36 out of 40 classes. Calculate my attendance percentage.">
+                    🧮 Attendance Calculator
+                </button>
+                <button type="button" class="suggestion"
+                    data-question="Analyze my uploaded college timetable and tell me Monday's classes.">
+                    📅 Timetable Analysis
+                </button>
+                <button type="button" class="suggestion"
+                    data-question="Summarize my uploaded document.">
+                    📄 Document Summary
+                </button>
+            </div>
+
+            <section id="chat-box" class="chat-box" aria-live="polite">
+                <div class="message assistant">
+                    <strong>AI Assistant</strong>
+                    <p>Welcome! How can I help you today?</p>
+                </div>
+            </section>
+
+            <form id="chat-form">
+                <label for="question">Your question</label>
+                <textarea id="question" name="question"
+                    placeholder="Ask me anything about your college..."
+                    rows="3"></textarea>
+
+                <div class="details">
+                    <div>
+                        <label for="student">Student name</label>
+                        <input id="student" name="student"
+                            placeholder="Enter student name">
+                    </div>
+                    <div>
+                        <label for="subject">Subject</label>
+                        <input id="subject" name="subject"
+                            placeholder="e.g. Mathematics">
+                    </div>
+                    <div>
+                        <label for="day">Attendance date</label>
+                        <input id="day" name="day" type="date">
+                    </div>
+                    <div>
+                        <label for="status">Attendance status</label>
+                        <select id="status" name="status">
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="upload-area">
+                    <label for="file">Upload timetable or document</label>
+                    <input id="file" name="file" type="file"
+                        accept=".pdf,.docx,.txt">
+                    <small>Supported formats: PDF, DOCX, TXT · Max 10 MB</small>
+                </div>
+
+                <button id="send-btn" type="submit">Send Message ➤</button>
+            </form>
+        </main>
+
+        <footer>
+            College AI Assistant · Powered by Gemini
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const question = document.getElementById("question");
+        const chatBox = document.getElementById("chat-box");
+        const sendBtn = document.getElementById("send-btn");
+
+        function addMessage(role, title, text, tool = "") {
+            const message = document.createElement("div");
+            message.className = "message " + role;
+
+            const heading = document.createElement("strong");
+            heading.textContent = title;
+
+            const content = document.createElement("p");
+            content.textContent = text;
+
+            message.appendChild(heading);
+            message.appendChild(content);
+
+            if (tool) {
+                const toolLabel = document.createElement("small");
+                toolLabel.className = "tool-label";
+                toolLabel.textContent = "Tool used: " + tool;
+                message.appendChild(toolLabel);
+            }
+
+            chatBox.appendChild(message);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return message;
+        }
+
+        document.querySelectorAll(".suggestion").forEach(button => {
+            button.addEventListener("click", () => {
+                question.value = button.dataset.question;
+                question.focus();
+            });
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const text = question.value.trim();
+            const file = document.getElementById("file").files[0];
+
+            if (!text && !file) {
+                alert("Please enter a question or select a document.");
+                return;
+            }
+
+            addMessage("user", "You", text || "Please process my uploaded document.");
+            const loading = addMessage("assistant", "AI Assistant", "Thinking...");
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = "Processing...";
+
+            try {
+                const formData = new FormData(form);
+
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                loading.querySelector("p").textContent =
+                    data.answer || "No answer received.";
+
+                const toolLabel = document.createElement("small");
+                toolLabel.className = "tool-label";
+                toolLabel.textContent = "Tool used: " + (data.tool || "Unknown");
+                loading.appendChild(toolLabel);
+
+                if (!response.ok) {
+                    loading.querySelector("p").textContent +=
+                        "\n\nPlease check the error and try again.";
+                }
+            } catch (error) {
+                loading.querySelector("p").textContent =
+                    "Could not connect to the server. Check that Flask is running.";
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = "Send Message ➤";
+                question.value = "";
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
